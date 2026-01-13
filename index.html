@@ -1,99 +1,129 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<title>Chat IA (Local)</title>
+  <meta charset="UTF-8">
+  <title>Chat PWA</title>
 
-<style>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#111">
+
+  <style>
     body {
-        font-family: Arial, sans-serif;
-        background: #f0f0f0;
-        margin: 0;
-        padding: 0;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
     }
-    .chat-container {
-        width: 400px;
-        margin: 40px auto;
-        background: white;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 0 10px #ccc;
-    }
-    #chatbox {
-        height: 300px;
-        overflow-y: auto;
-        border: 1px solid #ccc;
-        padding: 10px;
-        margin-bottom: 15px;
-        white-space: pre-wrap;
-    }
-    .user { font-weight: bold; color: #007bff; }
-    .ai { font-weight: bold; color: #28a745; }
-    .input-area {
-        display: flex;
-        gap: 10px;
-    }
-    input {
-        flex: 1;
-        padding: 8px;
-    }
-    button {
-        padding: 8px 15px;
-        cursor: pointer;
-    }
-</style>
 
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+
+    #messages div {
+      margin-bottom: 5px;
+    }
+
+    #bar {
+      display: flex;
+    }
+
+    input {
+      flex: 1;
+      padding: 10px;
+      font-size: 16px;
+      border: none;
+      outline: none;
+    }
+
+    button {
+      padding: 10px 15px;
+      font-size: 16px;
+      border: none;
+      background: #00aaff;
+      cursor: pointer;
+    }
+  </style>
 </head>
+
 <body>
 
-<div class="chat-container">
-    <h2>Chat IA (Local)</h2>
+  <div id="messages"></div>
 
-    <div id="chatbox"></div>
+  <div id="bar">
+    <input id="input" placeholder="Ton message..." />
+    <button id="send">Envoyer</button>
+  </div>
 
-    <div class="input-area">
-        <input id="message" type="text" placeholder="Écris un message...">
-        <button onclick="sendMessage()">Envoyer</button>
-    </div>
-</div>
+  <script type="module">
+    // 🔥 Imports Firebase (CDN, compatible GitHub Pages)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } 
+      from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously } 
+      from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-<script>
-async function sendMessage() {
-    const input = document.getElementById("message");
-    const chatbox = document.getElementById("chatbox");
-    const text = input.value.trim();
+    // 🔧 TA CONFIG FIREBASE (OK)
+    const firebaseConfig = {
+      apiKey: "AIzaSyDL2DDkIFq3HQW8fQLYlGWlVD_KiFb_6iA",
+      authDomain: "chat1-591c8.firebaseapp.com",
+      projectId: "chat1-591c8"
+    };
 
-    if (!text) return;
+    // 🚀 Initialisation
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
 
-    // Afficher le message utilisateur
-    chatbox.innerHTML += `<div class="user">Toi : ${text}</div>`;
-    chatbox.scrollTop = chatbox.scrollHeight;
-    input.value = "";
+    // 👤 Connexion anonyme
+    signInAnonymously(auth);
 
-    // Appel direct à l'API OpenAI
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer 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" // ⚠️ Mets ta clé ici (test local uniquement)
-        },
-        body: JSON.stringify({
-            model: "gpt-4.1-mini",
-            messages: [
-                { role: "system", content: "Tu es une IA utile." },
-                { role: "user", content: text }
-            ]
-        })
+    // 📡 Référence messages
+    const messagesRef = collection(db, "messages");
+    const q = query(messagesRef, orderBy("createdAt"));
+
+    // 🔄 Réception temps réel
+    onSnapshot(q, snapshot => {
+      const messages = document.getElementById("messages");
+      messages.innerHTML = "";
+
+      snapshot.forEach(doc => {
+        const m = doc.data();
+        const div = document.createElement("div");
+        div.innerHTML = `<b>${m.user}</b> : ${m.text}`;
+        messages.appendChild(div);
+      });
+
+      messages.scrollTop = messages.scrollHeight;
     });
 
-    const data = await response.json();
-    const reply = data.choices[0].message.content;
+    // 📤 Envoi message
+    document.getElementById("send").onclick = async () => {
+      const input = document.getElementById("input");
+      if (input.value.trim() === "") return;
 
-    // Afficher la réponse IA
-    chatbox.innerHTML += `<div class="ai">IA : ${reply}</div>`;
-    chatbox.scrollTop = chatbox.scrollHeight;
-}
-</script>
+      await addDoc(messagesRef, {
+        text: input.value,
+        user: "Anonyme",
+        createdAt: serverTimestamp()
+      });
+
+      input.value = "";
+    };
+
+    // ⌨️ Entrée = envoyer
+    document.getElementById("input").addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        document.getElementById("send").click();
+      }
+    });
+  </script>
 
 </body>
 </html>
+
