@@ -1,9 +1,8 @@
 {
-  "name": "Chat PWA",
-  "short_name": "Chat",
+  "name": "Devinez le mot PWA",
+  "short_name": "Pendu",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#111111",
-  "theme_color": "#111111"
+  "background_color": "#1e1f22",
+  "theme_color": "#1e1f22"
 }
-
