@@ -3,153 +3,115 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chat PWA</title>
-
+<title>Devinez le mot</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1e1f22">
 
 <style>
-/* ===== RESET ===== */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-/* ===== GLOBAL ===== */
 body {
+  margin:0;
   font-family: Arial, sans-serif;
   background: #1e1f22;
   color: #fff;
-  height: 100vh;
-  display: flex;
-}
-
-/* ===== APP ===== */
-#app {
-  display: flex;
-  width: 100%;
-  height: 100%;
-}
-
-/* ===== ROOMS ===== */
-#rooms {
-  width: 80px;
-  background: #111214;
   display: flex;
   flex-direction: column;
-  padding: 8px;
-  gap: 8px;
+  height: 100vh;
 }
 
-.room {
-  background: #2b2d31;
-  color: white;
+header {
   padding: 10px;
-  border-radius: 50%;
+  background: #2b2d31;
   text-align: center;
-  font-size: 12px;
+  font-weight: bold;
+  font-size: 20px;
+}
+
+#game {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+#wordDisplay {
+  font-size: 28px;
+  letter-spacing: 5px;
+  margin: 20px 0;
+}
+
+#letters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  justify-content: center;
+}
+
+.letterBtn {
+  padding: 10px 12px;
+  border-radius: 5px;
+  border: none;
+  background: #5865f2;
+  color: white;
+  font-weight: bold;
   cursor: pointer;
 }
 
-.room.active {
-  background: #5865f2;
+.letterBtn:disabled {
+  background: #444;
+  cursor: default;
 }
 
-/* ===== CHAT ===== */
-#chat {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+#info {
+  margin: 10px 0;
 }
 
-/* ===== HEADER ===== */
-#header {
-  height: 50px;
-  background: #2b2d31;
-  display: flex;
-  align-items: center;
-  padding: 0 10px;
-  font-weight: bold;
-}
-
-/* ===== MESSAGES ===== */
-#messages {
-  flex: 1;
+#inputWord {
   padding: 10px;
-  overflow-y: auto;
-}
-
-.message {
-  margin-bottom: 10px;
-}
-
-.user {
-  font-weight: bold;
-  color: #00aaff;
-}
-
-.text {
-  margin-left: 5px;
-}
-
-/* ===== INPUT BAR ===== */
-#inputBar {
-  display: flex;
-  padding: 8px;
-  background: #2b2d31;
-}
-
-#input {
-  flex: 1;
-  padding: 10px;
-  border-radius: 20px;
+  font-size: 18px;
+  border-radius: 5px;
   border: none;
   outline: none;
-  background: #1e1f22;
-  color: white;
 }
 
-#send {
-  margin-left: 8px;
-  background: #5865f2;
-  border: none;
-  color: white;
+#sendWord {
   padding: 10px 15px;
-  border-radius: 50%;
+  margin-left: 5px;
+  border-radius: 5px;
+  border: none;
+  background: #00aaff;
+  color: black;
+  font-weight: bold;
   cursor: pointer;
 }
 </style>
 </head>
-
 <body>
 
-<div id="app">
+<header>Devinez le mot</header>
 
-  <!-- SALONS -->
-  <div id="rooms">
-    <div class="room active" data-room="general">#gen</div>
-    <div class="room" data-room="dev">#dev</div>
-    <div class="room" data-room="gaming">#game</div>
+<div id="game">
+  <div id="setup">
+    <input id="inputWord" placeholder="Joueur 1 : Tape le mot..." />
+    <button id="sendWord">Lancer Partie</button>
   </div>
 
-  <!-- CHAT -->
-  <div id="chat">
-    <div id="header">#general</div>
-    <div id="messages"></div>
+  <div id="info"></div>
 
-    <div id="inputBar">
-      <input id="input" placeholder="Message..." />
-      <button id="send">➤</button>
-    </div>
-  </div>
+  <div id="wordDisplay"></div>
 
+  <div id="letters"></div>
+
+  <div id="errors"></div>
+
+  <div id="score"></div>
 </div>
 
 <script type="module">
-/* ===== FIREBASE ===== */
+// ===== Firebase =====
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, where } 
+import { getFirestore, collection, addDoc, doc, setDoc, getDoc, onSnapshot, updateDoc, serverTimestamp } 
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInAnonymously } 
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -165,75 +127,136 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 signInAnonymously(auth);
 
-/* ===== USER ===== */
+// ===== Utilisateur / pseudo =====
 let pseudo = localStorage.getItem("pseudo");
 if (!pseudo) {
   pseudo = prompt("Ton pseudo ?");
   localStorage.setItem("pseudo", pseudo);
 }
 
-/* ===== ROOMS ===== */
-let currentRoom = "general";
-const messagesRef = collection(db, "messages");
-let unsubscribe = null;
+// ===== Variables =====
+let gameId = "pendu1"; // simplifié pour l’instant une seule partie
+let maxErrors = 6;
 
-function loadMessages() {
-  if (unsubscribe) unsubscribe();
+// ===== Référence Firestore =====
+const gameRef = doc(db, "games", gameId);
 
-  const q = query(
-    messagesRef,
-    where("room", "==", currentRoom),
-    orderBy("createdAt")
-  );
+// ===== Setup Joueur 1 =====
+const setupDiv = document.getElementById("setup");
+const inputWord = document.getElementById("inputWord");
+const sendWord = document.getElementById("sendWord");
+const wordDisplay = document.getElementById("wordDisplay");
+const lettersDiv = document.getElementById("letters");
+const infoDiv = document.getElementById("info");
+const errorsDiv = document.getElementById("errors");
+const scoreDiv = document.getElementById("score");
 
-  unsubscribe = onSnapshot(q, snap => {
-    const messages = document.getElementById("messages");
-    messages.innerHTML = "";
-    snap.forEach(doc => {
-      const m = doc.data();
-      messages.innerHTML += `
-        <div class="message">
-          <span class="user">${m.user}</span>
-          <span class="text">${m.text}</span>
-        </div>
-      `;
-    });
-    messages.scrollTop = messages.scrollHeight;
+let currentWord = "";
+let guessed = [];
+let errors = 0;
+
+// ===== Alphabet =====
+const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+// ===== Créer boutons lettres =====
+function createLetterButtons() {
+  lettersDiv.innerHTML = "";
+  alphabet.forEach(l => {
+    const btn = document.createElement("button");
+    btn.textContent = l;
+    btn.className = "letterBtn";
+    btn.onclick = () => guessLetter(l);
+    btn.disabled = guessed.includes(l);
+    lettersDiv.appendChild(btn);
   });
 }
 
-loadMessages();
+// ===== Affichage mot =====
+function updateWordDisplay(word, guesses) {
+  let display = "";
+  for (const c of word) {
+    if (c === " ") display += "  ";
+    else display += guesses.includes(c.toUpperCase()) ? c.toUpperCase() + " " : "_ ";
+  }
+  wordDisplay.textContent = display.trim();
+}
 
-/* ===== CHANGE ROOM ===== */
-document.querySelectorAll(".room").forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll(".room").forEach(r => r.classList.remove("active"));
-    btn.classList.add("active");
-    currentRoom = btn.dataset.room;
-    document.getElementById("header").innerText = "#" + currentRoom;
-    loadMessages();
-  };
-});
+// ===== Envoi mot =====
+sendWord.onclick = async () => {
+  const word = inputWord.value.trim().toUpperCase();
+  if (!word) return;
+  currentWord = word;
+  guessed = [];
+  errors = 0;
 
-/* ===== SEND MESSAGE ===== */
-document.getElementById("send").onclick = async () => {
-  const input = document.getElementById("input");
-  if (!input.value.trim()) return;
-
-  await addDoc(messagesRef, {
-    text: input.value,
-    user: pseudo,
-    room: currentRoom,
+  await setDoc(gameRef, {
+    word: currentWord,
+    guesses: [],
+    errors: 0,
+    turn: pseudo,
+    winner: "",
+    player1: pseudo,
+    player2: "",
     createdAt: serverTimestamp()
   });
 
-  input.value = "";
+  setupDiv.style.display = "none";
+  infoDiv.textContent = "Partie lancée ! Joueur 2 rejoint...";
+  createLetterButtons();
+  updateWordDisplay(currentWord, guessed);
 };
 
-document.getElementById("input").addEventListener("keydown", e => {
-  if (e.key === "Enter") document.getElementById("send").click();
+// ===== Deviner lettre =====
+async function guessLetter(letter) {
+  const docSnap = await getDoc(gameRef);
+  if (!docSnap.exists()) return;
+  const data = docSnap.data();
+
+  // joueur 2 si pas encore enregistré
+  if (!data.player2 && pseudo !== data.player1) {
+    await updateDoc(gameRef, { player2: pseudo });
+  }
+
+  // Vérifier si déjà deviné
+  if (data.guesses.includes(letter)) return;
+
+  // Mettre à jour Firestore
+  const newGuesses = [...data.guesses, letter];
+  let newErrors = data.errors;
+  if (!data.word.includes(letter)) newErrors++;
+
+  let winner = "";
+  // vérifier victoire
+  const won = data.word.split("").every(c => c === " " || newGuesses.includes(c));
+  if (won) winner = pseudo;
+  else if (newErrors >= maxErrors) winner = data.player1 === pseudo ? data.player2 : data.player1;
+
+  await updateDoc(gameRef, {
+    guesses: newGuesses,
+    errors: newErrors,
+    winner
+  });
+}
+
+// ===== Écouter Firestore =====
+onSnapshot(gameRef, snap => {
+  if (!snap.exists()) return;
+  const data = snap.data();
+  currentWord = data.word;
+  guessed = data.guesses;
+  errors = data.errors;
+
+  updateWordDisplay(currentWord, guessed);
+  createLetterButtons();
+  errorsDiv.textContent = `Erreurs : ${errors} / ${maxErrors}`;
+
+  if (data.winner) {
+    infoDiv.textContent = `Partie terminée ! Gagnant : ${data.winner}`;
+    lettersDiv.querySelectorAll("button").forEach(b => b.disabled = true);
+  } else {
+    infoDiv.textContent = `Joueur : ${pseudo} - Devinez le mot !`;
+  }
 });
 </script>
-
 </body>
 </html>
