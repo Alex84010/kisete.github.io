@@ -1,332 +1,515 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Devinez le mot – Lobby & 2 joueurs</title>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1e1f22">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Battle Arena - Jeu 2 Joueurs</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
 
-<style>
-body{
-  margin:0;
-  font-family: Arial, sans-serif;
-  background:#1e1f22;
-  color:white;
-  display:flex;
-  flex-direction:column;
-  height:100vh;
-}
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
 
-header{
-  padding:10px;
-  background:#2b2d31;
-  text-align:center;
-  font-weight:bold;
-  font-size:20px;
-}
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: #1a1a2e;
+        }
 
-#container{
-  flex:1;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:flex-start;
-  padding:10px;
-}
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 20px;
+            z-index: 10;
+        }
 
-/* Lobby */
-#lobby{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:10px;
-}
+        #gameCanvas { z-index: 1; }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px #00ff88;
+            text-align: center;
+        }
 
-/* Partie */
-#game{
-  display:none;
-  flex-direction:column;
-  align-items:center;
-  width:100%;
-}
+        .input-group {
+            margin: 15px 0;
+            width: 100%;
+            max-width: 300px;
+        }
 
-#roundInfo, #turnInfo, #score{
-  margin:5px 0;
-}
+        input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2em;
+            border: 2px solid #00ff88;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            text-align: center;
+        }
 
-#wordDisplay{
-  font-size:28px;
-  letter-spacing:5px;
-  margin:20px 0;
-}
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
 
-#letters{
-  display:flex;
-  flex-wrap:wrap;
-  gap:5px;
-  justify-content:center;
-  margin-bottom:10px;
-}
+        button {
+            padding: 15px 40px;
+            font-size: 1.3em;
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 10px;
+            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.4);
+            transition: transform 0.2s;
+        }
 
-.letterBtn{
-  padding:10px 12px;
-  border-radius:5px;
-  border:none;
-  background:#5865f2;
-  color:white;
-  font-weight:bold;
-  cursor:pointer;
-}
+        button:active {
+            transform: scale(0.95);
+        }
 
-.letterBtn:disabled{
-  background:#444;
-  cursor:default;
-}
+        .info {
+            margin: 10px 0;
+            font-size: 1.1em;
+            text-align: center;
+        }
 
-#inputWord{
-  padding:10px;
-  font-size:18px;
-  border-radius:5px;
-  border:none;
-  outline:none;
-}
+        .waiting {
+            animation: pulse 1.5s infinite;
+        }
 
-#sendWord, #joinBtn, #createBtn{
-  padding:10px 15px;
-  margin-left:5px;
-  border-radius:5px;
-  border:none;
-  background:#00aaff;
-  color:black;
-  font-weight:bold;
-  cursor:pointer;
-}
-</style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            gap: 20px;
+            z-index: 5;
+        }
+
+        .control-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(0, 255, 136, 0.3);
+            border: 3px solid #00ff88;
+            color: white;
+            font-size: 2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .control-btn:active {
+            background: rgba(0, 255, 136, 0.6);
+        }
+
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 1.5em;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+            z-index: 5;
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
-
-<header>Devinez le mot – 2 joueurs</header>
-
-<div id="container">
-  <!-- LOBBY -->
-  <div id="lobby">
-    <input id="pseudoInput" placeholder="Ton pseudo" />
-    <div>
-      <button id="createBtn">Créer Partie</button>
-      <button id="joinBtn">Rejoindre Partie</button>
-    </div>
-    <div id="lobbyInfo"></div>
-  </div>
-
-  <!-- GAME -->
-  <div id="game">
-    <div id="roundInfo"></div>
-    <div id="turnInfo"></div>
-    <div id="score"></div>
-
-    <div id="setupWord">
-      <input id="inputWord" placeholder="Écris un mot..." />
-      <button id="sendWord">Envoyer</button>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="score" style="display: none;">
+        <div id="p1Score">Joueur 1: 0</div>
+        <div id="p2Score">Joueur 2: 0</div>
+        <div id="timer">Temps: 60s</div>
     </div>
 
-    <div id="wordDisplay"></div>
-    <div id="letters"></div>
-    <div id="errors"></div>
-  </div>
-</div>
+    <div id="controls">
+        <div class="control-btn" id="leftBtn">←</div>
+        <div class="control-btn" id="upBtn">↑</div>
+        <div class="control-btn" id="rightBtn">→</div>
+    </div>
 
-<script type="module">
-// ===== Firebase =====
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp } 
-from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { getAuth, signInAnonymously } 
-from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    <div id="menuScreen" class="screen">
+        <h1>⚔️ Battle Arena</h1>
+        <div class="input-group">
+            <input type="text" id="playerName" placeholder="Votre nom" maxlength="15">
+        </div>
+        <button onclick="createGame()">Créer une Partie</button>
+        <button onclick="showJoinScreen()">Rejoindre une Partie</button>
+    </div>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDL2DDkIFq3HQW8fQLYlGWlVD_KiFb_6iA",
-  authDomain: "chat1-591c8.firebaseapp.com",
-  projectId: "chat1-591c8"
-};
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-signInAnonymously(auth);
+    <div id="joinScreen" class="screen" style="display: none;">
+        <h1>Rejoindre</h1>
+        <div class="input-group">
+            <input type="text" id="gameCode" placeholder="Code de partie" maxlength="6">
+        </div>
+        <button onclick="joinGame()">Rejoindre</button>
+        <button onclick="backToMenu()">Retour</button>
+    </div>
 
-// ===== Variables =====
-let pseudo = "";
-let gameId = "";
-let maxRounds = 5;
-let currentRound = 1;
-let currentWord = "";
-let guessed = [];
-let errors = 0;
-let maxErrors = 6;
-let currentTurn = "";
-let score = {player1:0, player2:0};
+    <div id="waitingScreen" class="screen" style="display: none;">
+        <h1>En attente...</h1>
+        <div class="info">Code de partie:</div>
+        <h1 id="displayCode" style="color: #00ff88;">----</h1>
+        <div class="info waiting">En attente du joueur 2...</div>
+        <button onclick="cancelGame()">Annuler</button>
+    </div>
 
-// ===== DOM =====
-const lobby = document.getElementById("lobby");
-const pseudoInput = document.getElementById("pseudoInput");
-const createBtn = document.getElementById("createBtn");
-const joinBtn = document.getElementById("joinBtn");
-const lobbyInfo = document.getElementById("lobbyInfo");
+    <div id="gameOverScreen" class="screen" style="display: none;">
+        <h1>Partie Terminée!</h1>
+        <div id="winner" class="info" style="font-size: 1.5em; margin: 20px 0;"></div>
+        <div id="finalScores" class="info"></div>
+        <button onclick="backToMenu()">Menu Principal</button>
+    </div>
 
-const gameDiv = document.getElementById("game");
-const setupWordDiv = document.getElementById("setupWord");
-const inputWord = document.getElementById("inputWord");
-const sendWord = document.getElementById("sendWord");
-const wordDisplay = document.getElementById("wordDisplay");
-const lettersDiv = document.getElementById("letters");
-const errorsDiv = document.getElementById("errors");
-const roundInfo = document.getElementById("roundInfo");
-const turnInfo = document.getElementById("turnInfo");
-const scoreDiv = document.getElementById("score");
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, set, onValue, update, remove, onDisconnect } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
 
-// ===== Alphabet =====
-const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+        const firebaseConfig = {
+            apiKey: "AIzaSyDL2DDkIFq3HQW8fQLYlGWlVD_KiFb_6iA",
+            authDomain: "chat1-591c8.firebaseapp.com",
+            projectId: "chat1-591c8",
+            databaseURL: "https://chat1-591c8-default-rtdb.firebaseio.com"
+        };
 
-// ===== Fonctions =====
-function createLetterButtons(){
-  lettersDiv.innerHTML = "";
-  alphabet.forEach(l=>{
-    const btn = document.createElement("button");
-    btn.textContent = l;
-    btn.className="letterBtn";
-    btn.onclick=()=>guessLetter(l);
-    btn.disabled = guessed.includes(l) || currentTurn !== pseudo;
-    lettersDiv.appendChild(btn);
-  });
-}
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
 
-function updateWordDisplay(){
-  let display="";
-  for(const c of currentWord){
-    if(c===" ") display+="  ";
-    else display += guessed.includes(c.toUpperCase()) ? c.toUpperCase()+" " : "_ ";
-  }
-  wordDisplay.textContent=display.trim();
-}
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
-// ===== Créer partie =====
-createBtn.onclick=async()=>{
-  if(!pseudoInput.value.trim()) return alert("Entre ton pseudo !");
-  pseudo=pseudoInput.value.trim();
-  gameId="game_"+Date.now(); // simple ID
-  await setDoc(doc(db,"games",gameId),{
-    player1:pseudo,
-    player2:"",
-    currentTurn:pseudo,
-    round:1,
-    maxRounds:maxRounds,
-    word:"",
-    guesses:[],
-    errors:0,
-    score:{player1:0,player2:0},
-    status:"waiting",
-    createdAt:serverTimestamp()
-  });
-  lobby.style.display="none";
-  gameDiv.style.display="flex";
-  setupWordDiv.style.display="block";
-  lobbyInfo.textContent=`Partie créée ! ID: ${gameId}`;
-  listenGame();
-};
+        let gameState = {
+            gameId: null,
+            playerId: null,
+            playerNumber: null,
+            isHost: false,
+            players: {},
+            coins: [],
+            gameTime: 60,
+            gameStarted: false
+        };
 
-// ===== Rejoindre partie =====
-joinBtn.onclick=async()=>{
-  if(!pseudoInput.value.trim()) return alert("Entre ton pseudo !");
-  pseudo=pseudoInput.value.trim();
-  const joinId = prompt("Entre l'ID de la partie :");
-  if(!joinId) return;
-  const gameRef = doc(db,"games",joinId);
-  const snap = await getDoc(gameRef);
-  if(!snap.exists()) return alert("Partie introuvable");
-  const data = snap.data();
-  if(data.player2) return alert("Partie complète");
-  await updateDoc(gameRef,{player2:pseudo,status:"playing"});
-  gameId=joinId;
-  lobby.style.display="none";
-  gameDiv.style.display="flex";
-  setupWordDiv.style.display=(data.currentTurn===pseudo)? "block":"none";
-  listenGame();
-};
+        let gameLoop = null;
+        let lastUpdate = Date.now();
 
-// ===== Envoyer mot =====
-sendWord.onclick=async()=>{
-  const w = inputWord.value.trim().toUpperCase();
-  if(!w) return;
-  const gameRef = doc(db,"games",gameId);
-  await updateDoc(gameRef,{
-    word:w,
-    guesses:[],
-    errors:0,
-    currentTurn:(pseudo===gameId.player1? gameId.player2 : gameId.player1)
-  });
-  inputWord.value="";
-  setupWordDiv.style.display="none";
-};
+        window.createGame = async function() {
+            const name = document.getElementById('playerName').value.trim();
+            if (!name) {
+                alert('Entrez votre nom!');
+                return;
+            }
 
-// ===== Deviner lettre =====
-async function guessLetter(letter){
-  const gameRef = doc(db,"games",gameId);
-  const snap = await getDoc(gameRef);
-  if(!snap.exists()) return;
-  const data = snap.data();
-  if(data.guesses.includes(letter)) return;
-  const newGuesses = [...data.guesses,letter];
-  let newErrors=data.errors;
-  if(!data.word.includes(letter)) newErrors++;
-  let winner="";
-  const won = data.word.split("").every(c=>c===" "||newGuesses.includes(c.toUpperCase()));
-  if(won) winner=pseudo;
-  else if(newErrors>=maxErrors) winner=(pseudo===data.player1? data.player2 : data.player1);
-  let newScore={...data.score};
-  if(winner){
-    if(winner===data.player1) newScore.player1++;
-    else newScore.player2++;
-  }
-  let nextTurn=(pseudo===data.player1? data.player2:data.player1);
-  await updateDoc(gameRef,{
-    guesses:newGuesses,
-    errors:newErrors,
-    winner,
-    score:newScore,
-    currentTurn:nextTurn
-  });
-}
+            const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+            gameState.gameId = code;
+            gameState.playerId = 'p1';
+            gameState.playerNumber = 1;
+            gameState.isHost = true;
 
-// ===== Écouter partie =====
-function listenGame(){
-  const gameRef = doc(db,"games",gameId);
-  onSnapshot(gameRef,snap=>{
-    if(!snap.exists()) return;
-    const data = snap.data();
-    currentWord=data.word;
-    guessed=data.guesses;
-    errors=data.errors;
-    currentRound=data.round;
-    currentTurn=data.currentTurn;
-    score=data.score;
+            await set(ref(db, `games/${code}`), {
+                host: name,
+                players: {
+                    p1: { name, x: 100, y: canvas.height / 2, score: 0, color: '#00ff88' }
+                },
+                coins: generateCoins(),
+                gameTime: 60,
+                started: false,
+                createdAt: Date.now()
+            });
 
-    roundInfo.textContent=`Round ${currentRound} / ${maxRounds}`;
-    turnInfo.textContent=`Tour: ${currentTurn} (${currentTurn===pseudo?"À toi !":"En attente..."})`;
-    scoreDiv.textContent=`Score : ${data.player1} ${score.player1} - ${data.player2} ${score.player2}`;
-    errorsDiv.textContent=`Erreurs : ${errors} / ${maxErrors}`;
-    updateWordDisplay();
-    createLetterButtons();
+            onDisconnect(ref(db, `games/${code}`)).remove();
 
-    if(data.winner){
-      alert(`Round terminé ! Gagnant : ${data.winner}`);
-      if(currentRound>=maxRounds){
-        alert(`Partie terminée ! Score final : ${data.player1} ${score.player1} - ${data.player2} ${score.player2}`);
-      }
-    }
-  });
-}
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('waitingScreen').style.display = 'flex';
+            document.getElementById('displayCode').textContent = code;
 
-</script>
+            listenToGame();
+        };
 
+        window.showJoinScreen = function() {
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('joinScreen').style.display = 'flex';
+        };
+
+        window.joinGame = async function() {
+            const name = document.getElementById('playerName').value.trim();
+            const code = document.getElementById('gameCode').value.trim().toUpperCase();
+            
+            if (!name || !code) {
+                alert('Entrez votre nom et le code!');
+                return;
+            }
+
+            gameState.gameId = code;
+            gameState.playerId = 'p2';
+            gameState.playerNumber = 2;
+
+            const gameRef = ref(db, `games/${code}`);
+            
+            await update(gameRef, {
+                [`players/p2`]: { 
+                    name, 
+                    x: canvas.width - 100, 
+                    y: canvas.height / 2, 
+                    score: 0,
+                    color: '#ff0088'
+                },
+                started: true
+            });
+
+            document.getElementById('joinScreen').style.display = 'none';
+            listenToGame();
+            startGame();
+        };
+
+        window.backToMenu = function() {
+            if (gameState.gameId) {
+                remove(ref(db, `games/${gameState.gameId}`));
+            }
+            location.reload();
+        };
+
+        window.cancelGame = function() {
+            remove(ref(db, `games/${gameState.gameId}`));
+            location.reload();
+        };
+
+        function generateCoins() {
+            const coins = [];
+            for (let i = 0; i < 15; i++) {
+                coins.push({
+                    x: Math.random() * (canvas.width - 60) + 30,
+                    y: Math.random() * (canvas.height - 60) + 30,
+                    collected: false
+                });
+            }
+            return coins;
+        }
+
+        function listenToGame() {
+            const gameRef = ref(db, `games/${gameState.gameId}`);
+            onValue(gameRef, (snapshot) => {
+                const data = snapshot.val();
+                if (!data) {
+                    backToMenu();
+                    return;
+                }
+
+                gameState.players = data.players || {};
+                gameState.coins = data.coins || [];
+                gameState.gameTime = data.gameTime || 60;
+
+                if (data.started && !gameState.gameStarted) {
+                    startGame();
+                }
+
+                updateScoreDisplay();
+            });
+        }
+
+        function startGame() {
+            gameState.gameStarted = true;
+            document.getElementById('waitingScreen').style.display = 'none';
+            document.getElementById('controls').style.display = 'flex';
+            document.getElementById('score').style.display = 'block';
+
+            setupControls();
+            
+            if (gameState.isHost) {
+                startTimer();
+            }
+
+            gameLoop = setInterval(draw, 1000 / 60);
+        }
+
+        function startTimer() {
+            const timerInterval = setInterval(() => {
+                if (gameState.gameTime <= 0) {
+                    clearInterval(timerInterval);
+                    endGame();
+                    return;
+                }
+                gameState.gameTime--;
+                update(ref(db, `games/${gameState.gameId}`), {
+                    gameTime: gameState.gameTime
+                });
+            }, 1000);
+        }
+
+        function setupControls() {
+            let keys = { left: false, right: false, up: false };
+
+            document.getElementById('leftBtn').addEventListener('touchstart', () => keys.left = true);
+            document.getElementById('leftBtn').addEventListener('touchend', () => keys.left = false);
+            document.getElementById('rightBtn').addEventListener('touchstart', () => keys.right = true);
+            document.getElementById('rightBtn').addEventListener('touchend', () => keys.right = false);
+            document.getElementById('upBtn').addEventListener('touchstart', () => keys.up = true);
+            document.getElementById('upBtn').addEventListener('touchend', () => keys.up = false);
+
+            setInterval(() => {
+                const player = gameState.players[gameState.playerId];
+                if (!player) return;
+
+                const speed = 5;
+                let moved = false;
+
+                if (keys.left && player.x > 30) {
+                    player.x -= speed;
+                    moved = true;
+                }
+                if (keys.right && player.x < canvas.width - 30) {
+                    player.x += speed;
+                    moved = true;
+                }
+                if (keys.up && player.y > 30) {
+                    player.y -= speed;
+                    moved = true;
+                }
+
+                const gravity = 0.5;
+                player.y += gravity;
+                if (player.y > canvas.height - 30) {
+                    player.y = canvas.height - 30;
+                }
+                moved = true;
+
+                checkCoinCollision();
+
+                if (moved) {
+                    update(ref(db, `games/${gameState.gameId}/players/${gameState.playerId}`), {
+                        x: player.x,
+                        y: player.y,
+                        score: player.score
+                    });
+                }
+            }, 1000 / 60);
+        }
+
+        function checkCoinCollision() {
+            const player = gameState.players[gameState.playerId];
+            if (!player) return;
+
+            gameState.coins.forEach((coin, index) => {
+                if (coin.collected) return;
+
+                const dx = player.x - coin.x;
+                const dy = player.y - coin.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < 40) {
+                    coin.collected = true;
+                    player.score += 10;
+                    
+                    update(ref(db, `games/${gameState.gameId}/coins/${index}`), {
+                        collected: true
+                    });
+                }
+            });
+        }
+
+        function draw() {
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            gameState.coins.forEach(coin => {
+                if (!coin.collected) {
+                    ctx.beginPath();
+                    ctx.arc(coin.x, coin.y, 15, 0, Math.PI * 2);
+                    ctx.fillStyle = '#FFD700';
+                    ctx.fill();
+                    ctx.strokeStyle = '#FFA500';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+            });
+
+            Object.values(gameState.players).forEach(player => {
+                ctx.beginPath();
+                ctx.arc(player.x, player.y, 20, 0, Math.PI * 2);
+                ctx.fillStyle = player.color;
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                ctx.fillStyle = 'white';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(player.name, player.x, player.y - 30);
+            });
+        }
+
+        function updateScoreDisplay() {
+            const p1 = gameState.players.p1;
+            const p2 = gameState.players.p2;
+            
+            if (p1) document.getElementById('p1Score').textContent = `${p1.name}: ${p1.score}`;
+            if (p2) document.getElementById('p2Score').textContent = `${p2.name}: ${p2.score}`;
+            document.getElementById('timer').textContent = `Temps: ${gameState.gameTime}s`;
+        }
+
+        function endGame() {
+            clearInterval(gameLoop);
+            
+            const p1 = gameState.players.p1;
+            const p2 = gameState.players.p2;
+            
+            let winnerText = '';
+            if (p1.score > p2.score) {
+                winnerText = `🏆 ${p1.name} gagne!`;
+            } else if (p2.score > p1.score) {
+                winnerText = `🏆 ${p2.name} gagne!`;
+            } else {
+                winnerText = '🤝 Égalité!';
+            }
+
+            document.getElementById('winner').textContent = winnerText;
+            document.getElementById('finalScores').innerHTML = 
+                `${p1.name}: ${p1.score} points<br>${p2.name}: ${p2.score} points`;
+            document.getElementById('gameOverScreen').style.display = 'flex';
+            document.getElementById('controls').style.display = 'none';
+        }
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
 </body>
 </html>
