@@ -3,115 +3,143 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Devinez le mot</title>
+<title>Devinez le mot – Lobby & 2 joueurs</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1e1f22">
 
 <style>
-body {
+body{
   margin:0;
   font-family: Arial, sans-serif;
-  background: #1e1f22;
-  color: #fff;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
+  background:#1e1f22;
+  color:white;
+  display:flex;
+  flex-direction:column;
+  height:100vh;
 }
 
-header {
-  padding: 10px;
-  background: #2b2d31;
-  text-align: center;
-  font-weight: bold;
-  font-size: 20px;
+header{
+  padding:10px;
+  background:#2b2d31;
+  text-align:center;
+  font-weight:bold;
+  font-size:20px;
 }
 
-#game {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px;
+#container{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  padding:10px;
 }
 
-#wordDisplay {
-  font-size: 28px;
-  letter-spacing: 5px;
-  margin: 20px 0;
+/* Lobby */
+#lobby{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
 }
 
-#letters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  justify-content: center;
+/* Partie */
+#game{
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  width:100%;
 }
 
-.letterBtn {
-  padding: 10px 12px;
-  border-radius: 5px;
-  border: none;
-  background: #5865f2;
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
+#roundInfo, #turnInfo, #score{
+  margin:5px 0;
 }
 
-.letterBtn:disabled {
-  background: #444;
-  cursor: default;
+#wordDisplay{
+  font-size:28px;
+  letter-spacing:5px;
+  margin:20px 0;
 }
 
-#info {
-  margin: 10px 0;
+#letters{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+  justify-content:center;
+  margin-bottom:10px;
 }
 
-#inputWord {
-  padding: 10px;
-  font-size: 18px;
-  border-radius: 5px;
-  border: none;
-  outline: none;
+.letterBtn{
+  padding:10px 12px;
+  border-radius:5px;
+  border:none;
+  background:#5865f2;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
 }
 
-#sendWord {
-  padding: 10px 15px;
-  margin-left: 5px;
-  border-radius: 5px;
-  border: none;
-  background: #00aaff;
-  color: black;
-  font-weight: bold;
-  cursor: pointer;
+.letterBtn:disabled{
+  background:#444;
+  cursor:default;
+}
+
+#inputWord{
+  padding:10px;
+  font-size:18px;
+  border-radius:5px;
+  border:none;
+  outline:none;
+}
+
+#sendWord, #joinBtn, #createBtn{
+  padding:10px 15px;
+  margin-left:5px;
+  border-radius:5px;
+  border:none;
+  background:#00aaff;
+  color:black;
+  font-weight:bold;
+  cursor:pointer;
 }
 </style>
 </head>
 <body>
 
-<header>Devinez le mot</header>
+<header>Devinez le mot – 2 joueurs</header>
 
-<div id="game">
-  <div id="setup">
-    <input id="inputWord" placeholder="Joueur 1 : Tape le mot..." />
-    <button id="sendWord">Lancer Partie</button>
+<div id="container">
+  <!-- LOBBY -->
+  <div id="lobby">
+    <input id="pseudoInput" placeholder="Ton pseudo" />
+    <div>
+      <button id="createBtn">Créer Partie</button>
+      <button id="joinBtn">Rejoindre Partie</button>
+    </div>
+    <div id="lobbyInfo"></div>
   </div>
 
-  <div id="info"></div>
+  <!-- GAME -->
+  <div id="game">
+    <div id="roundInfo"></div>
+    <div id="turnInfo"></div>
+    <div id="score"></div>
 
-  <div id="wordDisplay"></div>
+    <div id="setupWord">
+      <input id="inputWord" placeholder="Écris un mot..." />
+      <button id="sendWord">Envoyer</button>
+    </div>
 
-  <div id="letters"></div>
-
-  <div id="errors"></div>
-
-  <div id="score"></div>
+    <div id="wordDisplay"></div>
+    <div id="letters"></div>
+    <div id="errors"></div>
+  </div>
 </div>
 
 <script type="module">
 // ===== Firebase =====
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, doc, setDoc, getDoc, onSnapshot, updateDoc, serverTimestamp } 
+import { getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp } 
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, signInAnonymously } 
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -121,142 +149,184 @@ const firebaseConfig = {
   authDomain: "chat1-591c8.firebaseapp.com",
   projectId: "chat1-591c8"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 signInAnonymously(auth);
 
-// ===== Utilisateur / pseudo =====
-let pseudo = localStorage.getItem("pseudo");
-if (!pseudo) {
-  pseudo = prompt("Ton pseudo ?");
-  localStorage.setItem("pseudo", pseudo);
-}
-
 // ===== Variables =====
-let gameId = "pendu1"; // simplifié pour l’instant une seule partie
+let pseudo = "";
+let gameId = "";
+let maxRounds = 5;
+let currentRound = 1;
+let currentWord = "";
+let guessed = [];
+let errors = 0;
 let maxErrors = 6;
+let currentTurn = "";
+let score = {player1:0, player2:0};
 
-// ===== Référence Firestore =====
-const gameRef = doc(db, "games", gameId);
+// ===== DOM =====
+const lobby = document.getElementById("lobby");
+const pseudoInput = document.getElementById("pseudoInput");
+const createBtn = document.getElementById("createBtn");
+const joinBtn = document.getElementById("joinBtn");
+const lobbyInfo = document.getElementById("lobbyInfo");
 
-// ===== Setup Joueur 1 =====
-const setupDiv = document.getElementById("setup");
+const gameDiv = document.getElementById("game");
+const setupWordDiv = document.getElementById("setupWord");
 const inputWord = document.getElementById("inputWord");
 const sendWord = document.getElementById("sendWord");
 const wordDisplay = document.getElementById("wordDisplay");
 const lettersDiv = document.getElementById("letters");
-const infoDiv = document.getElementById("info");
 const errorsDiv = document.getElementById("errors");
+const roundInfo = document.getElementById("roundInfo");
+const turnInfo = document.getElementById("turnInfo");
 const scoreDiv = document.getElementById("score");
-
-let currentWord = "";
-let guessed = [];
-let errors = 0;
 
 // ===== Alphabet =====
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
-// ===== Créer boutons lettres =====
-function createLetterButtons() {
+// ===== Fonctions =====
+function createLetterButtons(){
   lettersDiv.innerHTML = "";
-  alphabet.forEach(l => {
+  alphabet.forEach(l=>{
     const btn = document.createElement("button");
     btn.textContent = l;
-    btn.className = "letterBtn";
-    btn.onclick = () => guessLetter(l);
-    btn.disabled = guessed.includes(l);
+    btn.className="letterBtn";
+    btn.onclick=()=>guessLetter(l);
+    btn.disabled = guessed.includes(l) || currentTurn !== pseudo;
     lettersDiv.appendChild(btn);
   });
 }
 
-// ===== Affichage mot =====
-function updateWordDisplay(word, guesses) {
-  let display = "";
-  for (const c of word) {
-    if (c === " ") display += "  ";
-    else display += guesses.includes(c.toUpperCase()) ? c.toUpperCase() + " " : "_ ";
+function updateWordDisplay(){
+  let display="";
+  for(const c of currentWord){
+    if(c===" ") display+="  ";
+    else display += guessed.includes(c.toUpperCase()) ? c.toUpperCase()+" " : "_ ";
   }
-  wordDisplay.textContent = display.trim();
+  wordDisplay.textContent=display.trim();
 }
 
-// ===== Envoi mot =====
-sendWord.onclick = async () => {
-  const word = inputWord.value.trim().toUpperCase();
-  if (!word) return;
-  currentWord = word;
-  guessed = [];
-  errors = 0;
-
-  await setDoc(gameRef, {
-    word: currentWord,
-    guesses: [],
-    errors: 0,
-    turn: pseudo,
-    winner: "",
-    player1: pseudo,
-    player2: "",
-    createdAt: serverTimestamp()
+// ===== Créer partie =====
+createBtn.onclick=async()=>{
+  if(!pseudoInput.value.trim()) return alert("Entre ton pseudo !");
+  pseudo=pseudoInput.value.trim();
+  gameId="game_"+Date.now(); // simple ID
+  await setDoc(doc(db,"games",gameId),{
+    player1:pseudo,
+    player2:"",
+    currentTurn:pseudo,
+    round:1,
+    maxRounds:maxRounds,
+    word:"",
+    guesses:[],
+    errors:0,
+    score:{player1:0,player2:0},
+    status:"waiting",
+    createdAt:serverTimestamp()
   });
+  lobby.style.display="none";
+  gameDiv.style.display="flex";
+  setupWordDiv.style.display="block";
+  lobbyInfo.textContent=`Partie créée ! ID: ${gameId}`;
+  listenGame();
+};
 
-  setupDiv.style.display = "none";
-  infoDiv.textContent = "Partie lancée ! Joueur 2 rejoint...";
-  createLetterButtons();
-  updateWordDisplay(currentWord, guessed);
+// ===== Rejoindre partie =====
+joinBtn.onclick=async()=>{
+  if(!pseudoInput.value.trim()) return alert("Entre ton pseudo !");
+  pseudo=pseudoInput.value.trim();
+  const joinId = prompt("Entre l'ID de la partie :");
+  if(!joinId) return;
+  const gameRef = doc(db,"games",joinId);
+  const snap = await getDoc(gameRef);
+  if(!snap.exists()) return alert("Partie introuvable");
+  const data = snap.data();
+  if(data.player2) return alert("Partie complète");
+  await updateDoc(gameRef,{player2:pseudo,status:"playing"});
+  gameId=joinId;
+  lobby.style.display="none";
+  gameDiv.style.display="flex";
+  setupWordDiv.style.display=(data.currentTurn===pseudo)? "block":"none";
+  listenGame();
+};
+
+// ===== Envoyer mot =====
+sendWord.onclick=async()=>{
+  const w = inputWord.value.trim().toUpperCase();
+  if(!w) return;
+  const gameRef = doc(db,"games",gameId);
+  await updateDoc(gameRef,{
+    word:w,
+    guesses:[],
+    errors:0,
+    currentTurn:(pseudo===gameId.player1? gameId.player2 : gameId.player1)
+  });
+  inputWord.value="";
+  setupWordDiv.style.display="none";
 };
 
 // ===== Deviner lettre =====
-async function guessLetter(letter) {
-  const docSnap = await getDoc(gameRef);
-  if (!docSnap.exists()) return;
-  const data = docSnap.data();
-
-  // joueur 2 si pas encore enregistré
-  if (!data.player2 && pseudo !== data.player1) {
-    await updateDoc(gameRef, { player2: pseudo });
+async function guessLetter(letter){
+  const gameRef = doc(db,"games",gameId);
+  const snap = await getDoc(gameRef);
+  if(!snap.exists()) return;
+  const data = snap.data();
+  if(data.guesses.includes(letter)) return;
+  const newGuesses = [...data.guesses,letter];
+  let newErrors=data.errors;
+  if(!data.word.includes(letter)) newErrors++;
+  let winner="";
+  const won = data.word.split("").every(c=>c===" "||newGuesses.includes(c.toUpperCase()));
+  if(won) winner=pseudo;
+  else if(newErrors>=maxErrors) winner=(pseudo===data.player1? data.player2 : data.player1);
+  let newScore={...data.score};
+  if(winner){
+    if(winner===data.player1) newScore.player1++;
+    else newScore.player2++;
   }
-
-  // Vérifier si déjà deviné
-  if (data.guesses.includes(letter)) return;
-
-  // Mettre à jour Firestore
-  const newGuesses = [...data.guesses, letter];
-  let newErrors = data.errors;
-  if (!data.word.includes(letter)) newErrors++;
-
-  let winner = "";
-  // vérifier victoire
-  const won = data.word.split("").every(c => c === " " || newGuesses.includes(c));
-  if (won) winner = pseudo;
-  else if (newErrors >= maxErrors) winner = data.player1 === pseudo ? data.player2 : data.player1;
-
-  await updateDoc(gameRef, {
-    guesses: newGuesses,
-    errors: newErrors,
-    winner
+  let nextTurn=(pseudo===data.player1? data.player2:data.player1);
+  await updateDoc(gameRef,{
+    guesses:newGuesses,
+    errors:newErrors,
+    winner,
+    score:newScore,
+    currentTurn:nextTurn
   });
 }
 
-// ===== Écouter Firestore =====
-onSnapshot(gameRef, snap => {
-  if (!snap.exists()) return;
-  const data = snap.data();
-  currentWord = data.word;
-  guessed = data.guesses;
-  errors = data.errors;
+// ===== Écouter partie =====
+function listenGame(){
+  const gameRef = doc(db,"games",gameId);
+  onSnapshot(gameRef,snap=>{
+    if(!snap.exists()) return;
+    const data = snap.data();
+    currentWord=data.word;
+    guessed=data.guesses;
+    errors=data.errors;
+    currentRound=data.round;
+    currentTurn=data.currentTurn;
+    score=data.score;
 
-  updateWordDisplay(currentWord, guessed);
-  createLetterButtons();
-  errorsDiv.textContent = `Erreurs : ${errors} / ${maxErrors}`;
+    roundInfo.textContent=`Round ${currentRound} / ${maxRounds}`;
+    turnInfo.textContent=`Tour: ${currentTurn} (${currentTurn===pseudo?"À toi !":"En attente..."})`;
+    scoreDiv.textContent=`Score : ${data.player1} ${score.player1} - ${data.player2} ${score.player2}`;
+    errorsDiv.textContent=`Erreurs : ${errors} / ${maxErrors}`;
+    updateWordDisplay();
+    createLetterButtons();
 
-  if (data.winner) {
-    infoDiv.textContent = `Partie terminée ! Gagnant : ${data.winner}`;
-    lettersDiv.querySelectorAll("button").forEach(b => b.disabled = true);
-  } else {
-    infoDiv.textContent = `Joueur : ${pseudo} - Devinez le mot !`;
-  }
-});
+    if(data.winner){
+      alert(`Round terminé ! Gagnant : ${data.winner}`);
+      if(currentRound>=maxRounds){
+        alert(`Partie terminée ! Score final : ${data.player1} ${score.player1} - ${data.player2} ${score.player2}`);
+      }
+    }
+  });
+}
+
 </script>
+
 </body>
 </html>
